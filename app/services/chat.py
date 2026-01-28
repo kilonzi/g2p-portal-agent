@@ -146,7 +146,6 @@ Example: {{"title": "LDLR Gene Analysis", "summary": "Discussion about the LDLR 
                                         yield emit_action(
                                             action_type="delegation",
                                             display_title=subagent_info['title'],
-                                            display_icon=subagent_info['icon'],
                                             status="running",
                                             action_id=action_id,
                                             display_summary=task_desc,
@@ -160,7 +159,6 @@ Example: {{"title": "LDLR Gene Analysis", "summary": "Discussion about the LDLR 
                                         yield emit_action(
                                             action_type="tool",
                                             display_title=tool_info['title'],
-                                            display_icon=tool_info['icon'],
                                             status="running",
                                             action_id=action_id,
                                             display_summary=args_summary or tool_info['description'],
@@ -184,7 +182,6 @@ Example: {{"title": "LDLR Gene Analysis", "summary": "Discussion about the LDLR 
                                     yield emit_action(
                                         action_type="tool" if tool_name != "task" else "delegation",
                                         display_title=tool_info['title'],
-                                        display_icon=tool_info['icon'],
                                         status="success",
                                         action_id=tool_call_id,
                                         display_summary=content[:100] if content else "Completed",

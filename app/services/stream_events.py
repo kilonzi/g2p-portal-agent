@@ -88,7 +88,6 @@ def emit_thinking(
 def emit_action(
     action_type: str,
     display_title: str,
-    display_icon: str,
     status: str,
     action_id: Optional[str] = None,
     display_summary: Optional[str] = None,
@@ -101,7 +100,6 @@ def emit_action(
     Args:
         action_type: "tool", "delegation", "api_call"
         display_title: "Fetching Gene Information", "Genetic Discovery Specialist"
-        display_icon: "🔧", "🧬"
         status: "running", "success", "failed"
         action_id: Unique ID for tracking (tool_id, subagent_id)
         display_summary: Human-readable summary
@@ -113,7 +111,6 @@ def emit_action(
         "type": action_type,
         "visibility": visibility,
         "display_title": display_title,
-        "display_icon": display_icon,
         "display_status": status,
         "timestamp": datetime.now().isoformat()
     }
