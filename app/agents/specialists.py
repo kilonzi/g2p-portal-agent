@@ -5,6 +5,9 @@ from app.tools.definitions import (
     map_variant_to_canonical, check_clinvar_status, align_isoforms,
     run_python_analysis, fetch_pdb_file
 )
+from app.tools.feedback import (
+    record_user_preference, suggest_global_improvement, get_user_preferences
+)
 
 # Define sub-agents
 genetic_discovery_agent = {

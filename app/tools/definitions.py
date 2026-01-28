@@ -167,7 +167,7 @@ async def check_clinvar_status(gene: str, protein_id: str, position: int) -> str
     except Exception as e:
         return f"Error parsing ClinVar status: {e}"
 
-@tool
+@tool(description="Aligns two isoforms to check for splicing differences.")
 async def align_isoforms(gene: str, iso1: str, iso2: str) -> str:
     """
     Aligns two isoforms to check for splicing differences.
