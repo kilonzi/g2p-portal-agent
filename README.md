@@ -139,6 +139,44 @@ curl -N -X POST http://localhost:8000/chat/stream \
 
 ---
 
+## 🚢 Deployment
+
+### Docker Deployment
+Build and run the Docker container:
+
+```bash
+# Build the image
+docker build --no-cache -t g2p-portal-agent .
+
+# Run the container
+docker run -p 8080:8080 g2p-portal-agent
+```
+
+### Google Cloud Run Deployment
+Build and push to Google Container Registry:
+
+```bash
+gcloud builds submit --tag us-central1-docker.pkg.dev/[PROJECT-ID]/g2p-portal/g2p-portal-agent
+```
+
+Deploy to Cloud Run:
+
+```bash
+gcloud run deploy g2p-portal-agent \
+  --image us-central1-docker.pkg.dev/[PROJECT-ID]/g2p-portal/g2p-portal-agent \
+  --region us-central1 \
+  --platform managed \
+  --service-account my-service-account@broad-cloud-eng-scratch.iam.gserviceaccount.com \
+  --allow-unauthenticated
+```
+### Broadie Deployment
+The agent will be served using Broadie's built-in serving capabilities via:
+```bash
+broadie serve app.main:app
+```
+
+---
+
 ## 🤝 Extending the System
 
 To add a new specialist agent:

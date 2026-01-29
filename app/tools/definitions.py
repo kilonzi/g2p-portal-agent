@@ -13,6 +13,8 @@ async def search_gene_index(query: str) -> List[Dict]:
     
     Args:
         query: The name or symbol to search for (e.g., "her2", "insulin").
+        
+    LIMITATION: Does not handle complex boolean logic (e.g., "AND", "OR") or phenotype-only descriptions directly.
     """
     # Maps to: GET /api/v2.0/genes/options
     # Doing a client-side filter since the endpoint returns all options or supports simple search
@@ -33,6 +35,7 @@ async def search_gene_index(query: str) -> List[Dict]:
             item for item in data 
             if query_lower in str(item.get("label", "")).lower() 
             or query_lower in str(item.get("value", "")).lower()
+            or query_lower in str(item).lower()  # Search all fields (e.g. UniProt ID)
         ]
         return results[:10] # Cap results
     return f"Error searching gene index: {data}"
@@ -45,9 +48,26 @@ async def get_gene_dossier(gene_name: str) -> Dict:
     
     Args:
         gene_name: The official gene symbol (e.g., "LDLR").
+        
+    LIMITATION: Only retrieves static metadata; does not provide real-time clinical trial data.
     """
     # Maps to: GET /api/gene/:geneName
+    # Maps to: GET /api/gene/:geneName
     return await G2PClient.get(f"/gene/{gene_name}")
+
+@tool
+async def lookup_gene_by_pdb(pdb_id: str) -> Dict:
+    """
+    Finds the Gene and Protein associated with a given PDB ID.
+    Useful for reverse lookup: "What gene is this structure (7K4Y) for?"
+    
+    Args:
+        pdb_id: The 4-character PDB ID (e.g., "7K4Y").
+        
+    LIMITATION: Only works if the PDB is mapped in our internal database.
+    """
+    # Maps to: GET /api/genes/pdb/:pdbId
+    return await G2PClient.get(f"/genes/pdb/{pdb_id}")
 
 
 # --- 2. Structural Biology Tools ---
@@ -61,6 +81,8 @@ async def get_protein_features(gene: str, protein_id: str) -> str:
     Args:
         gene: Gene symbol (e.g., "LDLR")
         protein_id: Uniprot ID (e.g., "P01130")
+        
+    LIMITATION: ONLY returns pre-computed UniProt features; cannot predict new domains or analyze raw sequences.
     """
     # Maps to: GET /api/gene/:gene/protein/:id/protein-features
     return await G2PClient.get(f"/gene/{gene}/protein/{protein_id}/protein-features")
@@ -73,6 +95,8 @@ async def get_structure_map(gene: str, protein_id: str) -> Dict:
     Args:
         gene: Gene symbol
         protein_id: Uniprot ID
+        
+    LIMITATION: Mapping is pre-calculated from standard databases; does not align custom user sequences.
     """
     # Maps to: GET /api/gene/:gene/protein/:id/gene-transcript-protein-isoform-structure-map
     return await G2PClient.get(f"/gene/{gene}/protein/{protein_id}/gene-transcript-protein-isoform-structure-map")
@@ -84,6 +108,8 @@ async def fetch_alphafold_access(uniprot_id: str) -> Dict:
     
     Args:
         uniprot_id: The Uniprot accession ID.
+        
+    LIMITATION: Generates an access token only; does not return 3D coordinates or PDB text directly.
     """
     # Maps to: GET /api/af3StructureByUniProtId/:id
     return await G2PClient.get(f"/af3StructureByUniProtId/{uniprot_id}")

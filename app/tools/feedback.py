@@ -3,7 +3,19 @@ from typing import Literal, Dict, Any
 from datetime import datetime
 from loguru import logger
 import json
+import os
 
+MEMORY_ROOT = "./.memory"
+
+def _get_user_pref_path(user_id: str) -> str:
+    path = os.path.join(MEMORY_ROOT, "users", user_id, "preferences.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return path
+
+def _get_global_suggestion_path(suggestion_id: str) -> str:
+    path = os.path.join(MEMORY_ROOT, "global", "lessons", "pending", f"{suggestion_id}.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return path
 
 @tool
 async def record_user_preference(
@@ -26,8 +38,26 @@ async def record_user_preference(
     """
     logger.info(f"Recording personal preference for user {user_id}: {preference}")
     
-    # In a real implementation, store in LangGraph memory:
-    # store.put(("users", user_id, "preferences"), category, {"text": preference, "timestamp": datetime.now()})
+    file_path = _get_user_pref_path(user_id)
+    
+    # Load existing or create new
+    current_prefs = {}
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                current_prefs = json.load(f)
+        except Exception:
+            pass # Start fresh if corrupted
+            
+    # Update
+    current_prefs[category] = {
+        "text": preference,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Save
+    with open(file_path, "w") as f:
+        json.dump(current_prefs, f, indent=2)
     
     return f"""✅ **Preference Saved**
 
@@ -36,6 +66,7 @@ I've updated your personal settings:
 - **Preference**: {preference}
 
 This applies to **your conversations only** and takes effect immediately.
+(Saved to: `{file_path}`)
 
 You can view all your preferences by asking "What are my preferences?" or update them anytime."""
 
@@ -59,16 +90,12 @@ async def suggest_global_improvement(
         - "Always cite AlphaFold pLDDT confidence scores"
         - "Mention evolutionary conservation when discussing domains"
     """
-    # Import store (can't be a parameter as it breaks Gemini function schema)
-    from app.agents.orchestrator import store
-    
     suggestion_id = f"GS-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     logger.info(f"Global suggestion {suggestion_id} submitted by user {user_id}: {suggestion}")
     
-    # Store as PENDING in memory store
-    namespace = ("global", "lessons", "pending")
-    suggestion_data = {
+    data = {
+        "id": suggestion_id,
         "suggestion": suggestion,
         "category": category,
         "submitted_by": user_id,
@@ -76,10 +103,9 @@ async def suggest_global_improvement(
         "timestamp": datetime.now().isoformat()
     }
     
-    # Write to /memories/global/lessons/pending/{suggestion_id}
-    await store.aput(namespace, suggestion_id, suggestion_data)
-    
-    logger.info(f"Stored pending suggestion {suggestion_id} at namespace {namespace}")
+    file_path = _get_global_suggestion_path(suggestion_id)
+    with open(file_path, "w") as f:
+        json.dump(data, f, indent=2)
     
     return f"""💡 **Global Suggestion Submitted**
 
@@ -89,8 +115,9 @@ Thank you for helping improve the system! Your suggestion:
 - **Suggestion**: {suggestion}
 
 **Status**: 🔍 Pending Admin Review
+(Saved to: `{file_path}`)
 
-Global improvements are reviewed by administrators before being applied to ensure quality and prevent misuse. If approved, this will benefit all users. You'll be credited as the contributor!"""
+Global improvements are reviewed by administrators before being applied to all users."""
 
 
 @tool
@@ -101,20 +128,48 @@ async def get_user_preferences(user_id: str) -> str:
     Args:
         user_id: User identifier
     """
-    # In real implementation:
-    # prefs = store.get(("users", user_id, "preferences"))
+    file_path = _get_user_pref_path(user_id)
+    if not os.path.exists(file_path):
+        return """### 👤 Your Preferences
+        
+No custom preferences set yet. 
+To set one, say: "I prefer [preference]"."""
+
+    with open(file_path, "r") as f:
+        prefs = json.load(f)
+        
+    output = "### 👤 Your Preferences\n\n"
+    for cat, data in prefs.items():
+        output += f"**{cat.replace('_', ' ').title()}**\n"
+        output += f"- {data['text']}\n\n"
+        
+    output += "\nTo update, say: \"I prefer [preference]\"."
+    return output
+
+def get_global_preferences() -> str:
+    """
+    Reads ALL approved global lessons from disk to inject into System Prompt.
+    Not an async tool because it's used at startup/initialization.
+    """
+    approved_dir = os.path.join(MEMORY_ROOT, "global", "lessons", "approved")
     
-    # Mock response for now
-    return """### 👤 Your Preferences
-
-**Response Style**
-- Keep responses concise (under 150 words)
-
-**Technical Level**
-- Expert-level explanations
-
-**Custom Instructions**
-- None set yet
-
-To update, say: "I prefer [preference]" or "From now on, [instruction]"
-To reset, say: "Clear my preferences" """
+    if not os.path.exists(approved_dir):
+        return "No global lessons approved yet."
+        
+    lessons = []
+    try:
+        for filename in os.listdir(approved_dir):
+            if filename.endswith(".json"):
+                with open(os.path.join(approved_dir, filename), "r") as f:
+                    data = json.load(f)
+                    # Format: "* [Category] Suggestion (Contributor)"
+                    line = f"* [{data.get('category', 'General')}] {data.get('suggestion', '')}"
+                    lessons.append(line)
+    except Exception as e:
+        logger.error(f"Failed to load global lessons: {e}")
+        return "Error loading global lessons."
+        
+    if not lessons:
+        return "No global lessons approved yet."
+        
+    return "\n".join(lessons)

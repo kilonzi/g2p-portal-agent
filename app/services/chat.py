@@ -57,28 +57,27 @@ Example: {{"title": "LDLR Gene Analysis", "summary": "Discussion about the LDLR 
         # Generate stream ID
         stream_id = f"str_{uuid.uuid4().hex[:12]}"
         
-        # Load approved global lessons
-        global_lessons_text = ""
+        # Load User Preferences
+        user_prefs_text = ""
         try:
-            from app.agents.orchestrator import store
-            namespace = ("global", "lessons", "approved")
-            
-            approved_lessons = []
-            async for item in store.asearch(namespace):
-                lesson = item.value.get("lesson", "")
-                if lesson:
-                    approved_lessons.append(lesson)
-            
-            if approved_lessons:
-                lessons_formatted = "\n".join([f"- {lesson}" for lesson in approved_lessons])
-                global_lessons_text = f"\n\n### 📚 Active Global Lessons:\n{lessons_formatted}\n\n"
-                context_logger.info(f"Loaded {len(approved_lessons)} approved global lessons")
+            import os
+            pref_path = f"./.memory/users/{user_id}/preferences.json"
+            if os.path.exists(pref_path):
+                with open(pref_path, "r") as f:
+                    prefs = json.load(f)
+                    
+                if prefs:
+                    user_prefs_text = "\n\n### 👤 My Preferences:\n"
+                    for cat, data in prefs.items():
+                        user_prefs_text += f"- **{cat.title().replace('_', ' ')}**: {data.get('text', '')}\n"
+                    user_prefs_text += "\n"
+                    context_logger.info(f"Loaded user preferences for {user_id}")
         except Exception as e:
-            context_logger.warning(f"Could not load global lessons: {e}")
+            context_logger.warning(f"Could not load user preferences: {e}")
         
-        # Inject global lessons
-        if global_lessons_text and messages and messages[0].get("role") == "user":
-            messages[0]["content"] = global_lessons_text + messages[0]["content"]
+        # Inject context (Global is already in System Prompt, User Prefs go here)
+        if user_prefs_text and messages and messages[0].get("role") == "user":
+            messages[0]["content"] = user_prefs_text + messages[0]["content"]
         
         is_first_exchange = len([m for m in messages if m.get("role") == "user"]) == 1
         user_first_message = messages[0].get("content", "") if is_first_exchange else ""

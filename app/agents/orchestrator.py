@@ -1,12 +1,12 @@
 from deepagents import create_deep_agent
-from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend, FilesystemBackend
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.store.memory import InMemoryStore
 
 from .prompts import ROUTER_AGENT_PROMPT
 from .specialists import genetic_discovery_agent, structural_biology_agent, variant_analyst_agent
 from .model import get_model
-from app.tools.feedback import record_user_preference, suggest_global_improvement, get_user_preferences
+from app.tools.feedback import record_user_preference, suggest_global_improvement, get_user_preferences, get_global_preferences
 
 # 1. Thread Persistence (Short-term memory of the conversation)
 checkpointer = MemorySaver()
@@ -23,12 +23,12 @@ def backend_factory(rt):
     """
     return CompositeBackend(
         default=StateBackend(rt),
-        routes={"/memories/": StoreBackend(rt)}
+        routes={"/memories/": FilesystemBackend(root_dir="./.memory", virtual_mode=True)}
     )
 
 router_agent = create_deep_agent(
     model=get_model(),
-    system_prompt=ROUTER_AGENT_PROMPT.format(global_lessons="(Loaded dynamically from /memories/global/lessons/approved)"),
+    system_prompt=ROUTER_AGENT_PROMPT.format(global_lessons=get_global_preferences()),
     subagents=[genetic_discovery_agent, structural_biology_agent, variant_analyst_agent],
     tools=[record_user_preference, suggest_global_improvement, get_user_preferences],
     checkpointer=checkpointer,

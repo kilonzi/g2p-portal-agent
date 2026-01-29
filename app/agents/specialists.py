@@ -3,7 +3,7 @@ from app.tools.definitions import (
     search_gene_index, get_gene_dossier,
     get_protein_features, get_structure_map, fetch_alphafold_access,
     map_variant_to_canonical, check_clinvar_status, align_isoforms,
-    run_python_analysis, fetch_pdb_file
+    run_python_analysis, fetch_pdb_file, lookup_gene_by_pdb
 )
 from app.tools.feedback import (
     record_user_preference, suggest_global_improvement, get_user_preferences
@@ -14,7 +14,7 @@ genetic_discovery_agent = {
     "name": "genetic-discovery-agent",
     "description": "Responsible for identifying valid genes, retrieving metadata, and understanding disease associations.",
     "system_prompt": DISCOVERY_AGENT_PROMPT,
-    "tools": [search_gene_index, get_gene_dossier,run_python_analysis],
+    "tools": [search_gene_index, get_gene_dossier, lookup_gene_by_pdb, run_python_analysis],
 }
 
 structural_biology_agent = {
